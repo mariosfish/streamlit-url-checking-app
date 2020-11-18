@@ -1,10 +1,9 @@
+import base64
 import time
 
-import numpy as np
 import pandas as pd
 import requests
 import streamlit as st
-
 
 SITE_LIST = ['hosted-sites.army.gr', 'armyold.army.gr', 'bebeosis.army.gr', 'mail.army.gr', 'forensics.army.gr',
              'spb.army.gr', '492gsn.army.gr', 'www.anfm.army.gr', 'nspa.army.gr', 'poseidon.army.gr',
@@ -39,6 +38,34 @@ SITE_LIST = ['hosted-sites.army.gr', 'armyold.army.gr', 'bebeosis.army.gr', 'mai
 duration_ = []
 results = []
 
+data = pd.DataFrame()
+
+
+def download_link(object_to_download, download_filename, download_link_text, extension='excel'):
+    """
+    Generates a link to download the given object_to_download.
+
+    object_to_download (str, pd.DataFrame):  The object to be downloaded.
+    download_filename (str): filename and extension of file. e.g. mydata.csv, some_txt_output.txt
+    download_link_text (str): Text to display for download link.
+
+    Examples:
+    download_link(YOUR_DF, 'YOUR_DF.csv', 'Click here to download data!')
+    download_link(YOUR_STRING, 'YOUR_STRING.txt', 'Click here to download your text!')
+
+    """
+
+    if isinstance(object_to_download, pd.DataFrame):
+        if extension == 'CSV':
+            file_to_download = object_to_download.to_csv(index=False)
+        elif extension == 'Excel':
+            file_to_download = object_to_download.to_excel(index=False)
+
+        # some strings <-> bytes conversions necessary here
+        b64 = base64.b64encode(file_to_download.encode()).decode()
+
+        return f'<a href="data:file/txt;base64,{b64}" download="{download_filename}">{download_link_text}</a>'
+
 
 def get_status(site_):
     try:
@@ -59,7 +86,6 @@ st.title('Έλεγχος σελίδων στο domain army.gr')
 urls = st.multiselect(
     'Παρακαλώ επιλέξτε τα urls που επιθυμείτε να γίνει έλεγχος:', SITE_LIST, SITE_LIST)
 
-
 if st.button('Check sites'):
     if st.button('Stop checking'):
         st.stop()
@@ -73,17 +99,17 @@ if st.button('Check sites'):
         if get_status(site)[1] in [301, 302, 303]:
             site = 'https://{}'.format(url)
         latest_iteration.text(f'Checking site {site}')
-        bar.progress((urls.index(url)+1)/len(urls))
+        bar.progress((urls.index(url) + 1) / len(urls))
         stop = time.time()
         duration = stop - start
         duration_.append(duration)
         results.append(get_status(site))
-    
+
     st.header('Εμφάνιση αποτελεσμάτων')
 
     df = pd.DataFrame(data=results, columns=[
         'site', 'status_code', 'reason'], index=None)
-    # st.table(df)
+    data = df.copy()
 
     st.header('Εμφάνιση sites με κωδικό 000 (Connection Error):')
     st.table(df[df.status_code == '000'])
@@ -98,4 +124,16 @@ if st.button('Check sites'):
     st.table(df[df.status_code.isin([i for i in range(300, 400)])])
 
     st.header('Εμφάνιση sites με κωδικό 2xx (success) :')
-    st.table(df[df.status_code.isin([i for i in range(200,300)])])
+    st.table(df[df.status_code.isin([i for i in range(200, 300)])])
+
+    option = st.selectbox('Επιλέξτε τον τύπο που θέλετε να κατεβάσετε τα δεδομένα', ('Excel', 'CSV'))
+    if option == 'Excel':
+        if st.button('Download Dataframe as CSV'):
+            tmp_download_link = download_link(data, 'YOUR_DF.csv', 'Click here to download your data!',
+                                              extension=option)
+            st.markdown(tmp_download_link, unsafe_allow_html=True)
+    elif option == 'CSV':
+        if st.button('Download input as a text file'):
+            tmp_download_link = download_link(data, 'YOUR_INPUT.txt', 'Click here to download your text!',
+                                              extension=option)
+            st.markdown(tmp_download_link, unsafe_allow_html=True)
