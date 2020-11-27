@@ -1,10 +1,11 @@
 import base64
 import time
+from datetime import datetime
 
 import pandas as pd
+import pytz
 import requests
 import streamlit as st
-from datetime import datetime
 
 SITE_LIST = ['hosted-sites.army.gr', 'armyold.army.gr', 'bebeosis.army.gr', 'mail.army.gr', 'forensics.army.gr',
              'spb.army.gr', '492gsn.army.gr', 'www.anfm.army.gr', 'nspa.army.gr', 'poseidon.army.gr',
@@ -128,9 +129,10 @@ if st.button('Check sites'):
         st.header('Εμφάνιση sites με κωδικό 2xx (success) :')
         st.table(df[df.status_code.isin([i for i in range(200, 300)])])
 
-    now = datetime.now()  # current date and time
+    timezone = pytz.timezone('Europe/Athens')
+    now = datetime.now(tz=timezone)  # current date and time
     date_time = now.strftime("%d_%m_%y-%H:%M- ")
 
-    tmp_download_link = download_link(data, date_time+'urls_in_army_domain.csv',
+    tmp_download_link = download_link(data, date_time + 'urls_in_army_domain.csv',
                                       'Κάντε κλικ για να κατεβάσετε τα δεδομένα σε csv μορφή!')
     st.markdown(tmp_download_link, unsafe_allow_html=True)
