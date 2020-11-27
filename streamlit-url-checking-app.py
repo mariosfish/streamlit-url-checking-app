@@ -4,6 +4,7 @@ import time
 import pandas as pd
 import requests
 import streamlit as st
+from datetime import datetime
 
 SITE_LIST = ['hosted-sites.army.gr', 'armyold.army.gr', 'bebeosis.army.gr', 'mail.army.gr', 'forensics.army.gr',
              'spb.army.gr', '492gsn.army.gr', 'www.anfm.army.gr', 'nspa.army.gr', 'poseidon.army.gr',
@@ -41,7 +42,7 @@ results = []
 data = pd.DataFrame()
 
 
-def download_link(object_to_download, download_filename, download_link_text, extension='excel'):
+def download_link(df_, download_filename, download_link_text):
     """
     Generates a link to download the given object_to_download.
 
@@ -52,19 +53,15 @@ def download_link(object_to_download, download_filename, download_link_text, ext
     Examples:
     download_link(YOUR_DF, 'YOUR_DF.csv', 'Click here to download data!')
     download_link(YOUR_STRING, 'YOUR_STRING.txt', 'Click here to download your text!')
-
     """
 
-    if isinstance(object_to_download, pd.DataFrame):
-        if extension == 'CSV':
-            file_to_download = object_to_download.to_csv(index=False)
-        elif extension == 'Excel':
-            file_to_download = object_to_download.to_excel(index=False)
-
+    if isinstance(df_, pd.DataFrame):
+        file_to_download = df_.to_csv(index=False)
         # some strings <-> bytes conversions necessary here
         b64 = base64.b64encode(file_to_download.encode()).decode()
-
-        return f'<a href="data:file/txt;base64,{b64}" download="{download_filename}">{download_link_text}</a>'
+        return f'<a class="streamlit-button small-button primary-button" ' \
+               f'style="text-decoration: none; color: #262730;" href="data:file/txt;base64,{b64}"' \
+               f' download="{download_filename}">{download_link_text}</a>'
 
 
 def get_status(site_):
@@ -111,29 +108,29 @@ if st.button('Check sites'):
         'site', 'status_code', 'reason'], index=None)
     data = df.copy()
 
-    st.header('Εμφάνιση sites με κωδικό 000 (Connection Error):')
-    st.table(df[df.status_code == '000'])
+    if len(df[df.status_code == '000']) > 0:
+        st.header('Εμφάνιση sites με κωδικό 000 (Connection Error):')
+        st.table(df[df.status_code == '000'])
 
-    st.header('Εμφάνιση sites χωρίς κωδικό (Read timed out):')
-    st.table(df[df.status_code == '-'])
+    if len(df[df.status_code == '-']) > 0:
+        st.header('Εμφάνιση sites χωρίς κωδικό (Read timed out):')
+        st.table(df[df.status_code == '-'])
 
-    st.header('Εμφάνιση sites με κωδικό 4xx (client errors):')
-    st.table(df[df.status_code.isin([i for i in range(400, 500)])])
+    if len(df[df.status_code.isin([i for i in range(400, 500)])]) > 0:
+        st.header('Εμφάνιση sites με κωδικό 4xx (client errors):')
+        st.table(df[df.status_code.isin([i for i in range(400, 500)])])
 
-    st.header('Εμφάνιση sites με κωδικό 3xx (redirection) :')
-    st.table(df[df.status_code.isin([i for i in range(300, 400)])])
+    if len(df[df.status_code.isin([i for i in range(300, 400)])]) > 0:
+        st.header('Εμφάνιση sites με κωδικό 3xx (redirection) :')
+        st.table(df[df.status_code.isin([i for i in range(300, 400)])])
 
-    st.header('Εμφάνιση sites με κωδικό 2xx (success) :')
-    st.table(df[df.status_code.isin([i for i in range(200, 300)])])
+    if len(df[df.status_code.isin([i for i in range(200, 300)])]) > 0:
+        st.header('Εμφάνιση sites με κωδικό 2xx (success) :')
+        st.table(df[df.status_code.isin([i for i in range(200, 300)])])
 
-    option = st.selectbox('Επιλέξτε τον τύπο που θέλετε να κατεβάσετε τα δεδομένα', ('Excel', 'CSV'))
-    if option == 'Excel':
-        if st.button('Download Dataframe as CSV'):
-            tmp_download_link = download_link(data, 'YOUR_DF.csv', 'Click here to download your data!',
-                                              extension=option)
-            st.markdown(tmp_download_link, unsafe_allow_html=True)
-    elif option == 'CSV':
-        if st.button('Download input as a text file'):
-            tmp_download_link = download_link(data, 'YOUR_INPUT.txt', 'Click here to download your text!',
-                                              extension=option)
-            st.markdown(tmp_download_link, unsafe_allow_html=True)
+    now = datetime.now()  # current date and time
+    date_time = now.strftime("%d_%m_%y-%H:%M- ")
+
+    tmp_download_link = download_link(data, date_time+'urls_in_army_domain.csv',
+                                      'Κάντε κλικ για να κατεβάσετε τα δεδομένα σε csv μορφή!')
+    st.markdown(tmp_download_link, unsafe_allow_html=True)
